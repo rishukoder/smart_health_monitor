@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.pyc
+venv/
+venv_tf/
+*.pkl
+*.keras
+
+# Node
+node_modules/
+dist/
+.env
+
+# Large files
+*.csv
+balanced_ml_training_dataset_clean.csv
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Junk files from earlier
+"0)"
+"18"
+"25"

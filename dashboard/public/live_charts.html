@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Live Charts — Smart Health Monitor</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0f0f0f; color: #e8e3d9; min-height: 100vh; }
+
+  /* ── Header */
+  .header { background: #161616; border-bottom: 1px solid #1e1e1e; padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; }
+  .header-left { display: flex; align-items: center; gap: 12px; }
+  .logo { width: 36px; height: 36px; border-radius: 50%; background: #E24B4A; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+  .header-title { font-size: 15px; font-weight: 600; }
+  .header-sub   { font-size: 11px; color: #555; margin-top: 2px; }
+  .live-badge   { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #27ae60; }
+  .live-dot     { width: 7px; height: 7px; border-radius: 50%; background: #27ae60; animation: blink 2s infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  /* ── Navigation bar */
+  .nav-bar {
+    background: #111;
+    border-bottom: 1px solid #1e1e1e;
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    gap: 0;
+    overflow-x: auto;
+  }
+  .nav-link {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 16px;
+    font-size: 12px;
+    font-weight: 500;
+    color: #555;
+    text-decoration: none;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+    transition: color 0.15s;
+    cursor: pointer;
+  }
+  .nav-link:hover  { color: #e8e3d9; }
+  .nav-link.active { color: #E24B4A; border-bottom-color: #E24B4A; }
+  .nav-sep { width: 1px; height: 20px; background: #1e1e1e; margin: 0 4px; }
+  .nav-user {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 11px;
+    color: #555;
+    padding: 6px 0;
+    flex-shrink: 0;
+  }
+  .nav-user-name { color: #e8e3d9; font-weight: 500; }
+  .nav-logout {
+    font-size: 11px; color: #E24B4A; cursor: pointer;
+    padding: 3px 10px; border: 1px solid #E24B4A40; border-radius: 4px;
+    text-decoration: none; background: transparent;
+  }
+  .nav-logout:hover { background: #E24B4A15; }
+  .nav-login-btn {
+    font-size: 11px; color: white; cursor: pointer;
+    padding: 4px 12px; border: none; border-radius: 4px;
+    background: #0F6E56; text-decoration: none; font-weight: 500;
+  }
+
+  /* ── Controls bar */
+  .controls { background: #161616; border-bottom: 1px solid #1e1e1e; padding: 10px 24px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .controls label { font-size: 11px; color: #555; }
+  .controls select { background: #1a1a1a; border: 1px solid #2a2a2a; color: #e8e3d9; padding: 6px 10px; border-radius: 6px; font-size: 12px; cursor: pointer; }
+  .refresh-btn { background: #185FA5; color: white; border: none; padding: 6px 14px; border-radius: 6px; font-size: 12px; cursor: pointer; font-weight: 500; }
+  .refresh-btn:hover { background: #1470bd; }
+  .countdown { font-size: 11px; color: #555; margin-left: auto; }
+  .countdown span { color: #27ae60; font-weight: 600; }
+
+  /* ── Main layout */
+  .content { padding: 20px 24px; }
+
+  /* ── KPI cards */
+  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .kpi-card { background: #161616; border: 1px solid #1e1e1e; border-radius: 10px; padding: 14px; }
+  .kpi-label { font-size: 10px; color: #555; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .kpi-value { font-size: 28px; font-weight: 700; line-height: 1; }
+  .kpi-sub   { font-size: 10px; color: #555; margin-top: 4px; }
+
+  /* ── Charts */
+  .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .chart-card  { background: #161616; border: 1px solid #1e1e1e; border-radius: 10px; padding: 16px; }
+  .chart-card.full { grid-column: 1 / -1; }
+  .chart-title { font-size: 13px; font-weight: 500; margin-bottom: 4px; color: #e8e3d9; }
+  .chart-sub   { font-size: 11px; color: #555; margin-bottom: 14px; }
+  canvas { max-height: 220px; }
+
+  /* ── Table */
+  .table-card { background: #161616; border: 1px solid #1e1e1e; border-radius: 10px; padding: 16px; margin-bottom: 16px; overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th { text-align: left; padding: 8px 10px; font-size: 10px; color: #555; font-weight: 600; text-transform: uppercase; border-bottom: 1px solid #1e1e1e; }
+  td { padding: 10px 10px; border-bottom: 1px solid #1a1a1a; color: #ccc; }
+  tr:hover td { background: #1a1a1a; }
+  .risk-badge { font-size: 10px; padding: 2px 8px; border-radius: 20px; font-weight: 600; display: inline-block; }
+
+  /* ── Predictions */
+  .pred-card  { background: #161616; border: 1px solid #1e1e1e; border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+  .pred-item  { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #1a1a1a; font-size: 12px; }
+  .pred-item:last-child { border-bottom: none; }
+
+  /* ── Status bar */
+  .status-bar { background: #161616; border: 1px solid #1e1e1e; border-radius: 10px; padding: 12px 16px; display: flex; gap: 20px; font-size: 11px; color: #555; flex-wrap: wrap; margin-bottom: 16px; }
+  .status-item { display: flex; align-items: center; gap: 6px; }
+  .status-dot  { width: 6px; height: 6px; border-radius: 50%; }
+
+  .no-data { text-align: center; padding: 30px; color: #444; font-size: 12px; }
+  .toast   { position: fixed; bottom: 20px; right: 24px; background: #1a1a1a; border: 1px solid #2a2a2a; color: #e8e3d9; padding: 10px 16px; border-radius: 8px; font-size: 12px; display: none; z-index: 999; }
+  .toast.show { display: block; }
+
+  @media (max-width: 768px) { .charts-grid { grid-template-columns: 1fr; } .content { padding: 12px 14px; } }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="header-left">
+    <div class="logo">🏥</div>
+    <div>
+      <div class="header-title">Smart Health Monitor — Live Charts</div>
+      <div class="header-sub">Northeast India · Real-time health surveillance</div>
+    </div>
+  </div>
+  <div class="live-badge">
+    <div class="live-dot"></div>
+    <span id="liveLabel">Auto-refresh every 30s</span>
+  </div>
+</div>
+
+<!-- Navigation Bar -->
+<div class="nav-bar">
+  <!-- Main pages -->
+  <a class="nav-link" href="http://localhost:5173" title="Government Dashboard">
+    <span>📊</span> Dashboard
+  </a>
+  <div class="nav-sep"></div>
+  <a class="nav-link active" href="live_charts.html" title="Live Charts">
+    <span>📈</span> Live Charts
+  </a>
+  <div class="nav-sep"></div>
+  <a class="nav-link" href="login.html" title="Login / Register">
+    <span>🔐</span> Login
+  </a>
+  <div class="nav-sep"></div>
+  <a class="nav-link" href="asha_report.html" title="ASHA Reporter">
+    <span>📋</span> ASHA Report
+  </a>
+
+  <!-- User section on right -->
+  <div class="nav-user" id="navUser">
+    <!-- filled by JS -->
+  </div>
+</div>
+
+<!-- Controls -->
+<div class="controls">
+  <div>
+    <label>State</label><br>
+    <select id="stateFilter" onchange="filterByState()">
+      <option value="all">All 8 States</option>
+      <option value="Assam">Assam</option>
+      <option value="Meghalaya">Meghalaya</option>
+      <option value="Manipur">Manipur</option>
+      <option value="Mizoram">Mizoram</option>
+      <option value="Nagaland">Nagaland</option>
+      <option value="Tripura">Tripura</option>
+      <option value="Arunachal Pradesh">Arunachal Pradesh</option>
+      <option value="Sikkim">Sikkim</option>
+    </select>
+  </div>
+  <div>
+    <label>District</label><br>
+    <select id="districtFilter" onchange="filterByDistrict()">
+      <option value="all">All Districts</option>
+    </select>
+  </div>
+  <div>
+    <label>Chart type</label><br>
+    <select id="chartType" onchange="updateCharts()">
+      <option value="bar">Bar Chart</option>
+      <option value="line">Line Chart</option>
+    </select>
+  </div>
+  <button class="refresh-btn" onclick="fetchAll()">↻ Refresh Now</button>
+  <div class="countdown">Next refresh in <span id="countdown">30</span>s</div>
+</div>
+
+<div class="content">
+
+  <!-- API Status -->
+  <div class="status-bar" id="statusBar">
+    <div class="status-item"><div class="status-dot" id="dot-backend" style="background:#555"></div><span id="backendStatus">Checking backend...</span></div>
+    <div class="status-item"><div class="status-dot" id="dot-ml" style="background:#555"></div><span id="mlStatus">Checking ML service...</span></div>
+    <div class="status-item"><div class="status-dot" id="dot-auth" style="background:#555"></div><span id="authStatus">Checking login...</span></div>
+    <div class="status-item" style="margin-left:auto"><span id="lastUpdated">Last updated: --</span></div>
+  </div>
+
+  <!-- KPI Cards -->
+  <div class="kpi-grid">
+    <div class="kpi-card" style="border-left:3px solid #E24B4A">
+      <div class="kpi-label">Total Reports in DB</div>
+      <div class="kpi-value" id="kpi-reports" style="color:#E24B4A">--</div>
+      <div class="kpi-sub">from ASHA workers</div>
+    </div>
+    <div class="kpi-card" style="border-left:3px solid #EF9F27">
+      <div class="kpi-label">Active Alerts</div>
+      <div class="kpi-value" id="kpi-alerts" style="color:#EF9F27">--</div>
+      <div class="kpi-sub">unresolved</div>
+    </div>
+    <div class="kpi-card" style="border-left:3px solid #A32D2D">
+      <div class="kpi-label">Critical Alerts</div>
+      <div class="kpi-value" id="kpi-critical" style="color:#A32D2D">--</div>
+      <div class="kpi-sub">risk score ≥ 75</div>
+    </div>
+    <div class="kpi-card" style="border-left:3px solid #1D9E75">
+      <div class="kpi-label">Avg Water pH (24h)</div>
+      <div class="kpi-value" id="kpi-ph" style="color:#1D9E75">--</div>
+      <div class="kpi-sub">WHO safe: 6.5–8.5</div>
+    </div>
+    <div class="kpi-card" style="border-left:3px solid #7F77DD">
+      <div class="kpi-label">Avg Turbidity (24h)</div>
+      <div class="kpi-value" id="kpi-turbidity" style="color:#7F77DD">--</div>
+      <div class="kpi-sub">WHO limit: 4 NTU</div>
+    </div>
+    <div class="kpi-card" style="border-left:3px solid #185FA5">
+      <div class="kpi-label">Districts Reporting</div>
+      <div class="kpi-value" id="kpi-districts" style="color:#185FA5">--</div>
+      <div class="kpi-sub">of 82 total</div>
+    </div>
+  </div>
+
+  <!-- Charts Row 1 -->
+  <div class="charts-grid">
+    <div class="chart-card">
+      <div class="chart-title">Cases by District</div>
+      <div class="chart-sub">Total reported cases per district from submitted ASHA reports</div>
+      <canvas id="casesChart"></canvas>
+      <div class="no-data" id="casesNoData" style="display:none">No reports yet. Submit ASHA reports to see data.</div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Symptom Breakdown</div>
+      <div class="chart-sub">Diarrhea / Dehydration / Jaundice distribution</div>
+      <canvas id="symptomsChart"></canvas>
+      <div class="no-data" id="symptomsNoData" style="display:none">No symptom data yet.</div>
+    </div>
+  </div>
+
+  <!-- Charts Row 2 -->
+  <div class="charts-grid">
+    <div class="chart-card">
+      <div class="chart-title">ML Risk Scores by District</div>
+      <div class="chart-sub">Latest XGBoost risk score per district (0–100)</div>
+      <canvas id="riskChart"></canvas>
+      <div class="no-data" id="riskNoData" style="display:none">No ML predictions yet.</div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Water Quality — 24h Average</div>
+      <div class="chart-sub">Average pH and turbidity vs WHO safe limits</div>
+      <canvas id="waterChart"></canvas>
+      <div class="no-data" id="waterNoData" style="display:none">No water quality data in last 24h.</div>
+    </div>
+  </div>
+
+  <!-- Recent ML Predictions -->
+  <div class="pred-card">
+    <div class="chart-title" style="margin-bottom:4px">Recent ML Predictions</div>
+    <div class="chart-sub">Last 10 XGBoost predictions from ASHA reports</div>
+    <div id="predictionsList"><div class="no-data">No predictions yet. Submit ASHA reports to see ML results.</div></div>
+  </div>
+
+  <!-- District Report Table -->
+  <div class="table-card">
+    <div class="chart-title" style="margin-bottom:4px">District Report Summary</div>
+    <div class="chart-sub">Aggregated data from all submitted ASHA reports</div>
+    <div style="margin-bottom:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <select id="tableDistrictFilter" onchange="filterTable()" style="background:#1a1a1a;border:1px solid #2a2a2a;color:#e8e3d9;padding:6px 10px;border-radius:6px;font-size:12px;min-width:200px">
+        <option value="all">All Districts</option>
+      </select>
+      <select id="tableSortFilter" onchange="filterTable()" style="background:#1a1a1a;border:1px solid #2a2a2a;color:#e8e3d9;padding:6px 10px;border-radius:6px;font-size:12px">
+        <option value="cases">Sort by Cases</option>
+        <option value="risk">Sort by Risk Score</option>
+        <option value="reports">Sort by Reports</option>
+        <option value="district">Sort by District</option>
+      </select>
+      <a href="asha_report.html" style="font-size:11px;color:#0F6E56;font-weight:500;text-decoration:none;padding:6px 12px;border:1px solid #0F6E5640;border-radius:6px">
+        + Submit New Report
+      </a>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>District</th>
+          <th>Total Cases</th>
+          <th>Diarrhea</th>
+          <th>Dehydration</th>
+          <th>Jaundice</th>
+          <th>Reports</th>
+          <th>Risk Score</th>
+          <th>Risk Level</th>
+          <th>Disease</th>
+        </tr>
+      </thead>
+      <tbody id="districtTable">
+        <tr><td colspan="9" class="no-data">Loading district data...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Quick links footer -->
+  <div style="display:flex;gap:10px;justify-content:center;padding:16px 0;flex-wrap:wrap">
+    <a href="http://localhost:5173" style="font-size:12px;color:#555;text-decoration:none;padding:8px 16px;border:1px solid #1e1e1e;border-radius:6px;display:flex;align-items:center;gap:6px">
+      📊 Government Dashboard
+    </a>
+    <a href="login.html" style="font-size:12px;color:#555;text-decoration:none;padding:8px 16px;border:1px solid #1e1e1e;border-radius:6px;display:flex;align-items:center;gap:6px">
+      🔐 Login / Register
+    </a>
+    <a href="asha_report.html" style="font-size:12px;color:#555;text-decoration:none;padding:8px 16px;border:1px solid #1e1e1e;border-radius:6px;display:flex;align-items:center;gap:6px">
+      📋 ASHA Reporter
+    </a>
+  </div>
+
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const BACKEND = 'http://localhost:3001';
+const ML_SVC  = 'http://localhost:5001';
+
+const NE_DISTRICTS = {
+  Assam:               ['Kamrup','Cachar','Dibrugarh','Nagaon','Sonitpur','Tinsukia','Jorhat','Lakhimpur','Dhemaji','Udalguri','Darrang','Goalpara','Barpeta','Nalbari','Baksa','Kokrajhar','Dhubri','Golaghat','Hailakandi','Karimganj'],
+  Meghalaya:           ['East Jaintia Hills','West Jaintia Hills','East Khasi Hills','West Khasi Hills','Ri Bhoi','North Garo Hills','East Garo Hills','West Garo Hills','South Garo Hills'],
+  Manipur:             ['Imphal East','Imphal West','Thoubal','Bishnupur','Churachandpur','Senapati','Ukhrul','Tamenglong','Chandel','Kangpokpi'],
+  Mizoram:             ['Aizawl','Lunglei','Champhai','Kolasib','Serchhip','Lawngtlai','Mamit','Saiha'],
+  Nagaland:            ['Kohima','Dimapur','Mokokchung','Tuensang','Wokha','Phek','Zunheboto','Mon','Longleng'],
+  Tripura:             ['West Tripura','East Tripura','North Tripura','South Tripura','Dhalai','Gomati','Khowai','Sepahijala'],
+  'Arunachal Pradesh': ['East Siang','West Siang','Upper Siang','Lower Siang','East Kameng','West Kameng','Papum Pare','Lohit','Tirap','Changlang','Tawang'],
+  Sikkim:              ['East Sikkim','West Sikkim','North Sikkim','South Sikkim'],
+};
+const ALL_DISTRICTS = Object.values(NE_DISTRICTS).flat().sort();
+
+let allStats = null, allPredictions = [], chartInstances = {};
+let countdown = 30, countdownTimer = null;
+
+// ── Populate dropdowns
+function populateDropdowns() {
+  ['districtFilter','tableDistrictFilter'].forEach(id => {
+    const sel = document.getElementById(id);
+    ALL_DISTRICTS.forEach(d => {
+      const o = document.createElement('option');
+      o.value = d; o.textContent = d; sel.appendChild(o);
+    });
+  });
+}
+
+function filterByState() {
+  const state = document.getElementById('stateFilter').value;
+  const sel   = document.getElementById('districtFilter');
+  sel.innerHTML = '<option value="all">All Districts</option>';
+  const list  = state === 'all' ? ALL_DISTRICTS : (NE_DISTRICTS[state] || []).sort();
+  list.forEach(d => { const o = document.createElement('option'); o.value = d; o.textContent = d; sel.appendChild(o); });
+  updateCharts();
+}
+function filterByDistrict() { updateCharts(); }
+
+// ── Check login status and show user in nav
+function checkLogin() {
+  const token = localStorage.getItem('health_token');
+  const user  = localStorage.getItem('health_user');
+  const navUser = document.getElementById('navUser');
+  const authEl  = document.getElementById('authStatus');
+  const authDot = document.getElementById('dot-auth');
+
+  if (token && user) {
+    try {
+      const u = JSON.parse(user);
+      navUser.innerHTML = `
+        <span style="color:#555">Logged in as</span>
+        <span class="nav-user-name">${u.name || 'ASHA Worker'}</span>
+        <span style="color:#555;font-size:10px">${u.role || ''}</span>
+        <a class="nav-logout" onclick="logout()">Logout</a>
+      `;
+      authEl.textContent  = `Logged in as ${u.name || 'ASHA Worker'}`;
+      authDot.style.background = '#27ae60';
+    } catch {
+      showNotLoggedIn(navUser, authEl, authDot);
+    }
+  } else {
+    showNotLoggedIn(navUser, authEl, authDot);
+  }
+}
+
+function showNotLoggedIn(navUser, authEl, authDot) {
+  navUser.innerHTML = `
+    <span style="color:#555;font-size:11px">Not logged in</span>
+    <a class="nav-login-btn" href="login.html">Login</a>
+  `;
+  authEl.textContent       = 'Not logged in — some features limited';
+  authDot.style.background = '#EF9F27';
+}
+
+function logout() {
+  localStorage.removeItem('health_token');
+  localStorage.removeItem('health_user');
+  window.location.href = 'login.html';
+}
+
+// ── Fetch all data
+async function fetchAll() {
+  try {
+    const h = await fetch(BACKEND + '/api/health', { signal: AbortSignal.timeout(3000) });
+    const d = await h.json();
+    document.getElementById('backendStatus').textContent = 'Backend: ' + (d.message || 'online');
+    document.getElementById('dot-backend').style.background = '#27ae60';
+  } catch {
+    document.getElementById('backendStatus').textContent = 'Backend: offline — run node server.js';
+    document.getElementById('dot-backend').style.background = '#E24B4A';
+  }
+
+  try {
+    const m  = await fetch(ML_SVC + '/health', { signal: AbortSignal.timeout(3000) });
+    const md = await m.json();
+    document.getElementById('mlStatus').textContent =
+      `ML: XGBoost ${md.xgboost ? '✅' : '❌'}  LSTM ${md.lstm ? '✅' : '❌'}`;
+    document.getElementById('dot-ml').style.background = '#27ae60';
+  } catch {
+    document.getElementById('mlStatus').textContent = 'ML service: offline — run python app.py';
+    document.getElementById('dot-ml').style.background = '#E24B4A';
+  }
+
+  try {
+    const s = await fetch(BACKEND + '/api/stats', { signal: AbortSignal.timeout(5000) });
+    allStats = await s.json();
+
+    const total = allStats.district_stats.reduce((x,d) => x + parseInt(d.report_count || 0), 0);
+    setKPI('kpi-reports',   total);
+    setKPI('kpi-alerts',    allStats.alert_summary?.active    || 0);
+    setKPI('kpi-critical',  allStats.alert_summary?.critical  || 0);
+    setKPI('kpi-ph',        allStats.water_avg_24h?.avg_ph    || '--');
+    setKPI('kpi-turbidity', allStats.water_avg_24h?.avg_turbidity || '--');
+    setKPI('kpi-districts', allStats.district_stats.length);
+
+    allPredictions = allStats.recent_predictions || [];
+    updateCharts();
+    renderPredictions();
+    renderTable();
+    document.getElementById('lastUpdated').textContent = 'Last updated: ' + new Date().toLocaleTimeString();
+    showToast('✅ Data refreshed');
+  } catch (e) {
+    showToast('⚠ Cannot load stats — ' + e.message);
+  }
+}
+
+function setKPI(id, v) { const el = document.getElementById(id); if (el) el.textContent = v; }
+
+function updateCharts() {
+  if (!allStats) return;
+  const df = document.getElementById('districtFilter').value;
+  const ct = document.getElementById('chartType').value;
+  let stats = allStats.district_stats || [];
+  if (df !== 'all') stats = stats.filter(d => d.district === df);
+  renderCasesChart(stats, ct);
+  renderSymptomsChart(stats);
+  renderRiskChart(allPredictions, df);
+  renderWaterChart(allStats.water_avg_24h);
+}
+
+function chartOptions() {
+  return {
+    responsive: true,
+    plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ` ${c.dataset.label}: ${c.raw}` } } },
+    scales: {
+      y: { ticks: { color:'#555', font:{size:10} }, grid: { color:'#1e1e1e' } },
+      x: { ticks: { color:'#555', font:{size:10}, maxRotation:35 }, grid: { display:false } },
+    }
+  };
+}
+
+function destroyChart(id) {
+  if (chartInstances[id]) { chartInstances[id].destroy(); delete chartInstances[id]; }
+}
+
+function renderCasesChart(stats, type='bar') {
+  const cvs = document.getElementById('casesChart');
+  const nd  = document.getElementById('casesNoData');
+  if (!stats.length) { cvs.style.display='none'; nd.style.display='block'; return; }
+  cvs.style.display='block'; nd.style.display='none';
+  const top = stats.slice(0,12);
+  destroyChart('casesChart');
+  chartInstances['casesChart'] = new Chart(cvs, {
+    type,
+    data: { labels: top.map(d => d.district.length>14?d.district.substring(0,14)+'…':d.district),
+            datasets: [{ label:'Total Cases', data: top.map(d=>parseInt(d.total_cases||0)), backgroundColor:'#E24B4A80', borderColor:'#E24B4A', borderWidth:1, borderRadius:4, tension:0.4 }] },
+    options: chartOptions(),
+  });
+}
+
+function renderSymptomsChart(stats) {
+  const cvs = document.getElementById('symptomsChart');
+  const nd  = document.getElementById('symptomsNoData');
+  const d1 = stats.reduce((s,d)=>s+parseInt(d.diarrhea||0),0);
+  const d2 = stats.reduce((s,d)=>s+parseInt(d.dehydration||0),0);
+  const d3 = stats.reduce((s,d)=>s+parseInt(d.jaundice||0),0);
+  if (!d1&&!d2&&!d3) { cvs.style.display='none'; nd.style.display='block'; return; }
+  cvs.style.display='block'; nd.style.display='none';
+  destroyChart('symptomsChart');
+  chartInstances['symptomsChart'] = new Chart(cvs, {
+    type:'doughnut',
+    data: { labels:['Diarrhea','Dehydration','Jaundice'], datasets:[{ data:[d1,d2,d3], backgroundColor:['#E24B4A','#185FA5','#EF9F27'], borderWidth:0 }] },
+    options: { responsive:true, plugins:{ legend:{ labels:{ color:'#888', font:{size:11} } } } }
+  });
+}
+
+function renderRiskChart(preds, df) {
+  const cvs = document.getElementById('riskChart');
+  const nd  = document.getElementById('riskNoData');
+  let p = df !== 'all' ? preds.filter(x=>x.district===df) : preds;
+  if (!p.length) { cvs.style.display='none'; nd.style.display='block'; return; }
+  cvs.style.display='block'; nd.style.display='none';
+  const top = p.slice(0,10);
+  const scores = top.map(x=>parseInt(x.risk_score||0));
+  const colors = scores.map(s=>s>=75?'#A32D2D':s>=50?'#E24B4A':s>=25?'#EF9F27':'#1D9E75');
+  destroyChart('riskChart');
+  chartInstances['riskChart'] = new Chart(cvs, {
+    type:'bar',
+    data: { labels: top.map(x=>x.district.length>14?x.district.substring(0,14)+'…':x.district),
+            datasets:[{ label:'Risk Score', data:scores, backgroundColor:colors.map(c=>c+'90'), borderColor:colors, borderWidth:1, borderRadius:4 }] },
+    options: { ...chartOptions(), scales:{ y:{min:0,max:100,ticks:{color:'#555',font:{size:10}},grid:{color:'#1e1e1e'}}, x:{ticks:{color:'#555',font:{size:10}},grid:{display:false}} } }
+  });
+}
+
+function renderWaterChart(w) {
+  const cvs = document.getElementById('waterChart');
+  const nd  = document.getElementById('waterNoData');
+  if (!w||!w.avg_ph) { cvs.style.display='none'; nd.style.display='block'; return; }
+  cvs.style.display='block'; nd.style.display='none';
+  destroyChart('waterChart');
+  chartInstances['waterChart'] = new Chart(cvs, {
+    type:'bar',
+    data: { labels:['pH','Turbidity (NTU)','Fecal Coliform /10'],
+            datasets:[
+              { label:'Current (24h avg)', data:[parseFloat(w.avg_ph||0),parseFloat(w.avg_turbidity||0),parseFloat(w.avg_coliform||0)/10], backgroundColor:['#185FA580','#E24B4A80','#EF9F2780'], borderColor:['#185FA5','#E24B4A','#EF9F27'], borderWidth:1, borderRadius:4 },
+              { label:'WHO Safe Limit',    data:[8.5,4,0], backgroundColor:'#1D9E7530', borderColor:'#1D9E75', borderWidth:1, borderRadius:4 }
+            ] },
+    options: chartOptions(),
+  });
+}
+
+function renderPredictions() {
+  const el = document.getElementById('predictionsList');
+  if (!allPredictions.length) { el.innerHTML='<div class="no-data">No predictions yet.</div>'; return; }
+  const rc = s => s>=75?'#A32D2D':s>=50?'#E24B4A':s>=25?'#EF9F27':'#1D9E75';
+  const rl = s => s>=75?'Critical':s>=50?'High':s>=25?'Medium':'Low';
+  el.innerHTML = allPredictions.slice(0,10).map(p => {
+    const score = parseInt(p.risk_score||0);
+    const col = rc(score), level = rl(score);
+    const time = new Date(p.created_at).toLocaleTimeString();
+    return `<div class="pred-item">
+      <div>
+        <span style="font-weight:500;color:#e8e3d9">${p.district}</span>
+        <span style="color:#555;font-size:11px;margin-left:8px">${p.predicted_disease||'Unknown'} · ${time}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="width:80px;height:4px;background:#1a1a1a;border-radius:2px;overflow:hidden">
+          <div style="width:${score}%;height:100%;background:${col}"></div>
+        </div>
+        <span style="font-size:12px;font-weight:700;color:${col};min-width:28px">${score}</span>
+        <span class="risk-badge" style="background:${col}20;color:${col}">${level}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderTable() { filterTable(); }
+
+function filterTable() {
+  if (!allStats) return;
+  const tbody  = document.getElementById('districtTable');
+  const distF  = document.getElementById('tableDistrictFilter').value;
+  const sortBy = document.getElementById('tableSortFilter').value;
+  let stats = [...(allStats.district_stats||[])];
+  if (distF !== 'all') stats = stats.filter(d=>d.district===distF);
+  stats.sort((a,b) => {
+    if (sortBy==='cases')   return parseInt(b.total_cases||0)-parseInt(a.total_cases||0);
+    if (sortBy==='reports') return parseInt(b.report_count||0)-parseInt(a.report_count||0);
+    if (sortBy==='district')return a.district.localeCompare(b.district);
+    if (sortBy==='risk')    { const rA=allPredictions.find(p=>p.district===a.district)?.risk_score||0; const rB=allPredictions.find(p=>p.district===b.district)?.risk_score||0; return rB-rA; }
+    return 0;
+  });
+  if (!stats.length) { tbody.innerHTML='<tr><td colspan="9" class="no-data">No reports submitted yet.</td></tr>'; return; }
+  const rc = s=>s>=75?'#A32D2D':s>=50?'#E24B4A':s>=25?'#EF9F27':'#1D9E75';
+  const rl = s=>s>=75?'Critical':s>=50?'High':s>=25?'Medium':'Low';
+  tbody.innerHTML = stats.map(d => {
+    const pred=allPredictions.find(p=>p.district===d.district);
+    const score=parseInt(pred?.risk_score||0), col=rc(score), level=rl(score);
+    return `<tr>
+      <td style="font-weight:500;color:#e8e3d9">${d.district}</td>
+      <td style="color:#E24B4A;font-weight:600">${d.total_cases||0}</td>
+      <td>${d.diarrhea||0}</td><td>${d.dehydration||0}</td><td>${d.jaundice||0}</td>
+      <td style="color:#555">${d.report_count||0}</td>
+      <td><div style="display:flex;align-items:center;gap:6px">
+        <div style="width:50px;height:3px;background:#1a1a1a;border-radius:2px;overflow:hidden">
+          <div style="width:${score}%;height:100%;background:${col}"></div></div>
+        <span style="color:${col};font-weight:600">${score||'--'}</span></div></td>
+      <td>${score?`<span class="risk-badge" style="background:${col}20;color:${col}">${level}</span>`:'<span style="color:#444">--</span>'}</td>
+      <td style="color:#888">${pred?.predicted_disease||'--'}</td>
+    </tr>`;
+  }).join('');
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function startCountdown() {
+  countdown = 30;
+  clearInterval(countdownTimer);
+  countdownTimer = setInterval(() => {
+    countdown--;
+    const el = document.getElementById('countdown');
+    if (el) el.textContent = countdown;
+    if (countdown <= 0) { fetchAll(); countdown = 30; }
+  }, 1000);
+}
+
+// ── Init
+populateDropdowns();
+checkLogin();
+fetchAll();
+startCountdown();
+</script>
+</body>
+</html>

@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>ASHA Health Reporter</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f0f4f8; min-height: 100vh; }
+  .header { background: linear-gradient(135deg, #0F6E56, #185FA5); padding: 16px 20px 20px; color: white; }
+  .header-top { display: flex; align-items: center; gap: 12px; margin-bottom: 4px; }
+  .logo { width: 36px; height: 36px; background: rgba(255,255,255,0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+  .header h1 { font-size: 16px; font-weight: 600; }
+  .header p  { font-size: 12px; opacity: 0.85; margin-left: 48px; }
+  .login-warn { background: #fff3cd; border-left: 4px solid #f39c12; padding: 10px 16px; font-size: 12px; color: #856404; display: none; align-items: center; gap: 10px; }
+  .login-warn a { color: #0F6E56; font-weight: 600; }
+  .lang-bar { background: rgba(255,255,255,0.15); padding: 8px 20px; display: flex; gap: 6px; overflow-x: auto; }
+  .lang-btn { background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 4px 12px; border-radius: 20px; font-size: 11px; cursor: pointer; white-space: nowrap; }
+  .lang-btn.active { background: white; color: #0F6E56; font-weight: 600; }
+  .nav { display: flex; background: white; border-bottom: 1px solid #e0e0e0; }
+  .nav-btn { flex: 1; padding: 12px 4px; border: none; background: none; font-size: 11px; color: #888; cursor: pointer; border-bottom: 2px solid transparent; }
+  .nav-btn.active { color: #0F6E56; border-bottom-color: #0F6E56; font-weight: 600; }
+  .content { padding: 16px; max-width: 480px; margin: 0 auto; }
+  .pane { display: none; }
+  .pane.active { display: block; }
+  .section-card { background: white; border-radius: 12px; padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+  .section-title { font-size: 13px; font-weight: 600; color: #1a1a1a; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+  label { font-size: 12px; color: #555; display: block; margin-bottom: 4px; margin-top: 10px; }
+  label:first-of-type { margin-top: 0; }
+  select, input[type=number], input[type=text] { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 13px; color: #1a1a1a; background: #fafafa; }
+  select:focus, input:focus { outline: none; border-color: #0F6E56; background: white; }
+  .counter-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f0f0f0; }
+  .counter-row:last-child { border-bottom: none; }
+  .counter-label { font-size: 12px; color: #333; display: flex; align-items: center; gap: 8px; }
+  .counter-emoji { font-size: 16px; }
+  .counter-controls { display: flex; align-items: center; gap: 12px; }
+  .counter-btn { width: 36px; height: 36px; border-radius: 50%; border: none; font-size: 22px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: transform 0.1s; user-select: none; line-height: 1; }
+  .counter-btn:active { transform: scale(0.88); }
+  .counter-dec { background: #fee2e2; color: #dc2626; }
+  .counter-inc { background: #dcfce7; color: #16a34a; }
+  .counter-val { font-size: 22px; font-weight: 700; color: #1a1a1a; min-width: 34px; text-align: center; }
+  .water-slider { margin: 10px 0; }
+  .slider-header { display: flex; justify-content: space-between; font-size: 12px; color: #555; margin-bottom: 4px; }
+  .slider-val { font-weight: 600; color: #0F6E56; }
+  input[type=range] { width: 100%; accent-color: #0F6E56; }
+  .slider-status { font-size: 10px; padding: 2px 8px; border-radius: 20px; font-weight: 600; display: inline-block; margin-top: 2px; }
+  .submit-btn { width: 100%; padding: 14px; background: linear-gradient(135deg, #0F6E56, #185FA5); color: white; border: none; border-radius: 12px; font-size: 15px; font-weight: 600; cursor: pointer; margin-top: 4px; }
+  .submit-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+  .result-card { border-radius: 12px; padding: 16px; margin-top: 14px; border: 2px solid #ccc; display: none; }
+  .result-card.show { display: block; }
+  .risk-score { font-size: 42px; font-weight: 700; line-height: 1; }
+  .risk-bar { height: 8px; background: #e5e7eb; border-radius: 4px; overflow: hidden; margin: 10px 0; }
+  .risk-fill { height: 100%; border-radius: 4px; transition: width 0.8s ease; }
+  .action-item { display: flex; gap: 8px; padding: 6px 0; border-bottom: 1px solid #f0f0f0; font-size: 12px; color: #444; }
+  .sms-box { background: #1e1e1e; border-radius: 10px; padding: 12px 14px; margin: 8px 0; }
+  .sms-box pre { font-family: monospace; font-size: 11px; color: #9FE1CB; line-height: 1.6; white-space: pre-wrap; }
+  .sms-format-card { background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; padding: 10px 12px; margin: 8px 0; }
+  .sms-format-title { font-size: 11px; font-weight: 600; color: #16a34a; margin-bottom: 4px; }
+  .badge { font-size: 10px; padding: 2px 8px; border-radius: 20px; font-weight: 600; }
+  .history-item { padding: 10px 0; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: flex-start; }
+  .info-row { display: flex; justify-content: space-between; font-size: 11px; padding: 5px 0; border-bottom: 1px solid #f5f5f5; }
+  .risk-guide-item { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 8px; margin-bottom: 8px; }
+  .online-dot { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; display: inline-block; animation: blink 2s infinite; }
+  @keyframes blink { 0%,100%{opacity:1}50%{opacity:0.3} }
+  .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.8s linear infinite; vertical-align: middle; margin-right: 6px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1a1a1a; color: white; padding: 10px 20px; border-radius: 8px; font-size: 12px; z-index: 999; display: none; white-space: nowrap; }
+  .toast.show { display: block; }
+
+  /* district search box */
+  #districtSearch {
+    width: 100%; padding: 8px 12px; border: 1px solid #ddd;
+    border-radius: 8px 8px 0 0; font-size: 13px; color: #1a1a1a;
+    background: #fff; border-bottom: none;
+  }
+  #districtSearch:focus { outline: none; border-color: #0F6E56; }
+  #district { border-radius: 0 0 8px 8px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <div class="logo">🏥</div>
+    <div><h1>ASHA Health Reporter</h1></div>
+    <div style="margin-left:auto;display:flex;align-items:center;gap:5px">
+      <span class="online-dot"></span>
+      <span style="font-size:10px;opacity:0.85" id="loginStatus">Checking...</span>
+    </div>
+  </div>
+  <p>Smart Community Health Monitoring System</p>
+</div>
+
+<div class="login-warn" id="loginWarn">
+  ⚠️ Not logged in. Reports saved locally only. <a href="/login.html">Login →</a>
+</div>
+
+<div class="lang-bar">
+  <button class="lang-btn active" onclick="setLang('en',this)">English</button>
+  <button class="lang-btn" onclick="setLang('as',this)">অসমীয়া</button>
+  <button class="lang-btn" onclick="setLang('bn',this)">বাংলা</button>
+  <button class="lang-btn" onclick="setLang('mni',this)">মৈতৈ</button>
+  <button class="lang-btn" onclick="setLang('kha',this)">Khasi</button>
+  <button class="lang-btn" onclick="setLang('hi',this)">हिंदी</button>
+</div>
+
+<div class="nav">
+  <button class="nav-btn active" onclick="switchNav('report',this)">📋 Report</button>
+  <button class="nav-btn" onclick="switchNav('sms',this)">💬 SMS Mode</button>
+  <button class="nav-btn" onclick="switchNav('history',this)">📊 History</button>
+  <button class="nav-btn" onclick="switchNav('guide',this)">ℹ️ Guide</button>
+</div>
+
+<div class="content">
+
+<!-- REPORT TAB -->
+<div id="pane-report" class="pane active">
+
+  <div class="section-card">
+    <div class="section-title">📍 <span id="lbl-location">Location & Week</span></div>
+    <label id="lbl-district">District <span style="color:#888;font-weight:400">(82 districts)</span></label>
+
+    <!-- ── SEARCH BOX (filters the dropdown live) -->
+    <input
+      type="text"
+      id="districtSearch"
+      placeholder="🔍 Type to search district..."
+      oninput="filterDistricts(this.value)"
+      autocomplete="off"
+    >
+
+    <!-- ── FULL 82-DISTRICT DROPDOWN grouped by state -->
+    <select id="district" size="1">
+      <option value="">-- Select District --</option>
+
+      <!-- ════ ASSAM (31) ════ -->
+      <optgroup label="🟢 Assam (31 districts)">
+        <option value="1">Kamrup — Assam</option>
+        <option value="2">Kamrup Metropolitan — Assam</option>
+        <option value="3">Nagaon — Assam</option>
+        <option value="4">Sonitpur — Assam</option>
+        <option value="5">Lakhimpur — Assam</option>
+        <option value="6">Dibrugarh — Assam</option>
+        <option value="7">Jorhat — Assam</option>
+        <option value="8">Sivasagar — Assam</option>
+        <option value="9">Goalpara — Assam</option>
+        <option value="10">Barpeta — Assam</option>
+        <option value="11">Dhubri — Assam</option>
+        <option value="12">Cachar — Assam</option>
+        <option value="13">Hailakandi — Assam</option>
+        <option value="14">Karimganj — Assam</option>
+        <option value="15">Darrang — Assam</option>
+        <option value="16">Morigaon — Assam</option>
+        <option value="17">Golaghat — Assam</option>
+        <option value="18">Majuli — Assam</option>
+        <option value="19">Biswanath — Assam</option>
+        <option value="20">Chirang — Assam</option>
+        <option value="21">Bongaigaon — Assam</option>
+        <option value="22">Kokrajhar — Assam</option>
+        <option value="23">Dhemaji — Assam</option>
+        <option value="24">Tinsukia — Assam</option>
+        <option value="25">Karbi Anglong — Assam</option>
+        <option value="26">West Karbi Anglong — Assam</option>
+        <option value="27">Dima Hasao — Assam</option>
+        <option value="28">Hojai — Assam</option>
+        <option value="29">Bajali — Assam</option>
+        <option value="30">South Salmara-Mankachar — Assam</option>
+        <option value="31">Tamulpur — Assam</option>
+      </optgroup>
+
+      <!-- ════ MEGHALAYA (12) ════ -->
+      <optgroup label="🔵 Meghalaya (12 districts)">
+        <option value="32">East Khasi Hills — Meghalaya</option>
+        <option value="33">West Khasi Hills — Meghalaya</option>
+        <option value="34">South West Khasi Hills — Meghalaya</option>
+        <option value="35">Ri Bhoi — Meghalaya</option>
+        <option value="36">East Jaintia Hills — Meghalaya</option>
+        <option value="37">West Jaintia Hills — Meghalaya</option>
+        <option value="38">East Garo Hills — Meghalaya</option>
+        <option value="39">West Garo Hills — Meghalaya</option>
+        <option value="40">South Garo Hills — Meghalaya</option>
+        <option value="41">North Garo Hills — Meghalaya</option>
+        <option value="42">Eastern West Khasi Hills — Meghalaya</option>
+        <option value="43">Mairang — Meghalaya</option>
+      </optgroup>
+
+      <!-- ════ MANIPUR (9) ════ -->
+      <optgroup label="🟠 Manipur (9 districts)">
+        <option value="44">Imphal East — Manipur</option>
+        <option value="45">Imphal West — Manipur</option>
+        <option value="46">Bishnupur — Manipur</option>
+        <option value="47">Thoubal — Manipur</option>
+        <option value="48">Churachandpur — Manipur</option>
+        <option value="49">Senapati — Manipur</option>
+        <option value="50">Ukhrul — Manipur</option>
+        <option value="51">Chandel — Manipur</option>
+        <option value="52">Tamenglong — Manipur</option>
+      </optgroup>
+
+      <!-- ════ NAGALAND (8) ════ -->
+      <optgroup label="🟣 Nagaland (8 districts)">
+        <option value="53">Kohima — Nagaland</option>
+        <option value="54">Dimapur — Nagaland</option>
+        <option value="55">Mokokchung — Nagaland</option>
+        <option value="56">Tuensang — Nagaland</option>
+        <option value="57">Wokha — Nagaland</option>
+        <option value="58">Zunheboto — Nagaland</option>
+        <option value="59">Phek — Nagaland</option>
+        <option value="60">Mon — Nagaland</option>
+      </optgroup>
+
+      <!-- ════ MIZORAM (8) ════ -->
+      <optgroup label="🔴 Mizoram (8 districts)">
+        <option value="61">Aizawl — Mizoram</option>
+        <option value="62">Lunglei — Mizoram</option>
+        <option value="63">Champhai — Mizoram</option>
+        <option value="64">Serchhip — Mizoram</option>
+        <option value="65">Kolasib — Mizoram</option>
+        <option value="66">Lawngtlai — Mizoram</option>
+        <option value="67">Mamit — Mizoram</option>
+        <option value="68">Siaha — Mizoram</option>
+      </optgroup>
+
+      <!-- ════ TRIPURA (8) ════ -->
+      <optgroup label="🟡 Tripura (8 districts)">
+        <option value="69">West Tripura — Tripura</option>
+        <option value="70">East Tripura — Tripura</option>
+        <option value="71">North Tripura — Tripura</option>
+        <option value="72">South Tripura — Tripura</option>
+        <option value="73">Khowai — Tripura</option>
+        <option value="74">Sepahijala — Tripura</option>
+        <option value="75">Gomati — Tripura</option>
+        <option value="76">Unakoti — Tripura</option>
+      </optgroup>
+
+      <!-- ════ ARUNACHAL PRADESH (4) ════ -->
+      <optgroup label="⚪ Arunachal Pradesh (4 districts)">
+        <option value="77">Papum Pare — Arunachal Pradesh</option>
+        <option value="78">East Siang — Arunachal Pradesh</option>
+        <option value="79">West Siang — Arunachal Pradesh</option>
+        <option value="80">Lohit — Arunachal Pradesh</option>
+      </optgroup>
+
+      <!-- ════ SIKKIM (4) ════ -->
+      <optgroup label="🏔️ Sikkim (4 districts)">
+        <option value="81">East Sikkim — Sikkim</option>
+        <option value="82">West Sikkim — Sikkim</option>
+        <option value="83">North Sikkim — Sikkim</option>
+        <option value="84">South Sikkim — Sikkim</option>
+      </optgroup>
+
+    </select>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px">
+      <div>
+        <label id="lbl-week">Week Number</label>
+        <input type="number" id="week" min="1" max="52" value="25">
+      </div>
+      <div>
+        <label id="lbl-year">Year</label>
+        <input type="number" id="year" value="2026">
+      </div>
+    </div>
+  </div>
+
+  <div class="section-card">
+    <div class="section-title">🤒 <span id="lbl-symptoms">Symptom Counts This Week</span></div>
+
+    <div class="counter-row">
+      <div class="counter-label"><span class="counter-emoji">🚽</span><span id="lbl-diarrhea">Diarrhea cases</span></div>
+      <div class="counter-controls">
+        <button class="counter-btn counter-dec" onclick="change('diarrhea',-1)">−</button>
+        <div class="counter-val" id="v-diarrhea">0</div>
+        <button class="counter-btn counter-inc" onclick="change('diarrhea',1)">+</button>
+      </div>
+    </div>
+
+    <div class="counter-row">
+      <div class="counter-label"><span class="counter-emoji">💧</span><span id="lbl-dehydration">Dehydration cases</span></div>
+      <div class="counter-controls">
+        <button class="counter-btn counter-dec" onclick="change('dehydration',-1)">−</button>
+        <div class="counter-val" id="v-dehydration">0</div>
+        <button class="counter-btn counter-inc" onclick="change('dehydration',1)">+</button>
+      </div>
+    </div>
+
+    <div class="counter-row">
+      <div class="counter-label"><span class="counter-emoji">🟡</span><span id="lbl-jaundice">Jaundice cases</span></div>
+      <div class="counter-controls">
+        <button class="counter-btn counter-dec" onclick="change('jaundice',-1)">−</button>
+        <div class="counter-val" id="v-jaundice">0</div>
+        <button class="counter-btn counter-inc" onclick="change('jaundice',1)">+</button>
+      </div>
+    </div>
+
+    <div class="counter-row">
+      <div class="counter-label"><span class="counter-emoji">💀</span><span id="lbl-deaths">Deaths this week</span></div>
+      <div class="counter-controls">
+        <button class="counter-btn counter-dec" onclick="change('deaths',-1)">−</button>
+        <div class="counter-val" id="v-deaths">0</div>
+        <button class="counter-btn counter-inc" onclick="change('deaths',1)">+</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-card">
+    <div class="section-title">💧 <span id="lbl-water">Water Quality</span></div>
+
+    <div class="water-slider">
+      <div class="slider-header"><span id="lbl-ph">Water pH</span><span class="slider-val" id="ph-val">7.0</span></div>
+      <input type="range" id="sl-ph" min="5.0" max="9.0" step="0.1" value="7.0" oninput="updateSlider('ph',this.value)">
+      <span class="slider-status" id="ph-status"></span>
+    </div>
+
+    <div class="water-slider">
+      <div class="slider-header"><span id="lbl-turbidity">Turbidity (NTU)</span><span class="slider-val" id="turbidity-val">5</span></div>
+      <input type="range" id="sl-turbidity" min="0" max="50" step="1" value="5" oninput="updateSlider('turbidity',this.value)">
+      <span class="slider-status" id="turbidity-status"></span>
+    </div>
+
+    <div class="water-slider">
+      <div class="slider-header"><span id="lbl-fecal">Fecal Coliform (MPN/100ml)</span><span class="slider-val" id="fecal-val">0</span></div>
+      <input type="range" id="sl-fecal" min="0" max="800" step="10" value="0" oninput="updateSlider('fecal',this.value)">
+      <span class="slider-status" id="fecal-status"></span>
+    </div>
+
+    <div class="water-slider">
+      <div class="slider-header"><span id="lbl-rainfall">Rainfall this week (mm)</span><span class="slider-val" id="rainfall-val">50</span></div>
+      <input type="range" id="sl-rainfall" min="0" max="800" step="10" value="50" oninput="updateSlider('rainfall',this.value)">
+      <span class="slider-status" id="rainfall-status"></span>
+    </div>
+  </div>
+
+  <button class="submit-btn" id="submitBtn" onclick="submitReport()">📤 Submit Report</button>
+
+  <div class="result-card" id="resultCard">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+      <div>
+        <div style="font-size:11px;color:#888;margin-bottom:2px">XGBoost Risk Analysis</div>
+        <div class="risk-score" id="riskScore">--</div>
+        <div style="font-size:13px;color:#555;margin-top:3px" id="riskDisease">--</div>
+      </div>
+      <div style="text-align:right">
+        <div id="riskBadge" class="badge" style="font-size:14px;padding:6px 14px">--</div>
+        <div style="font-size:10px;color:#888;margin-top:6px">out of 100</div>
+      </div>
+    </div>
+    <div class="risk-bar"><div class="risk-fill" id="riskFill" style="width:0%"></div></div>
+    <div id="actionList" style="margin-top:10px"></div>
+    <div id="smsPreview" style="margin-top:10px"></div>
+  </div>
+</div>
+
+<!-- SMS TAB -->
+<div id="pane-sms" class="pane">
+  <div class="section-card">
+    <div class="section-title">📱 SMS Reporting — No Internet Needed</div>
+    <p style="font-size:12px;color:#555;line-height:1.6;margin-bottom:12px">
+      Send SMS to <strong>1800-1472-HEALTH</strong> in this format:
+    </p>
+    <div class="sms-format-card">
+      <div class="sms-format-title">SMS Format:</div>
+      <div style="font-family:monospace;font-size:12px;color:#1a1a1a">REPORT [DISTRICT_CODE] [DIARRHEA] [DEHYDRATION] [JAUNDICE] [WEEK]</div>
+    </div>
+    <div style="font-size:12px;color:#555;margin:10px 0 6px;font-weight:600">Example:</div>
+    <div class="sms-box"><pre>REPORT EJH 31 20 1 25</pre></div>
+    <div style="font-size:11px;color:#888;margin-top:6px">EJH=East Jaintia Hills · 31 diarrhea · 20 dehydration · 1 jaundice · Week 25</div>
+    <div style="margin-top:14px;font-size:12px;font-weight:600;color:#333;margin-bottom:8px">Common District Codes:</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">
+      <div class="info-row"><span style="color:#888">EJH</span><span style="font-weight:500">East Jaintia Hills</span></div>
+      <div class="info-row"><span style="color:#888">WJH</span><span style="font-weight:500">West Jaintia Hills</span></div>
+      <div class="info-row"><span style="color:#888">KAM</span><span style="font-weight:500">Kamrup</span></div>
+      <div class="info-row"><span style="color:#888">CAC</span><span style="font-weight:500">Cachar</span></div>
+      <div class="info-row"><span style="color:#888">IME</span><span style="font-weight:500">Imphal East</span></div>
+      <div class="info-row"><span style="color:#888">KOH</span><span style="font-weight:500">Kohima</span></div>
+      <div class="info-row"><span style="color:#888">AIZ</span><span style="font-weight:500">Aizawl</span></div>
+      <div class="info-row"><span style="color:#888">AGT</span><span style="font-weight:500">West Tripura</span></div>
+    </div>
+  </div>
+  <div class="section-card">
+    <div class="section-title">🔁 Simulate an SMS Report</div>
+    <label>Type SMS message below:</label>
+    <input type="text" id="smsInput" placeholder="REPORT EJH 31 20 1 25" style="margin-bottom:10px;font-family:monospace">
+    <button class="submit-btn" onclick="parseSMS()" style="padding:10px">Parse & Submit SMS Report</button>
+    <div id="smsResult" style="margin-top:10px;font-size:12px;color:#555"></div>
+  </div>
+</div>
+
+<!-- HISTORY TAB -->
+<div id="pane-history" class="pane">
+  <div class="section-card">
+    <div class="section-title">📊 Your Submitted Reports</div>
+    <div id="historyList">
+      <div style="text-align:center;padding:30px;color:#888;font-size:13px">Loading...</div>
+    </div>
+  </div>
+  <div class="section-card">
+    <div class="section-title">📡 Backend API Status</div>
+    <div id="apiStatus" style="font-size:12px;color:#888">Checking...</div>
+  </div>
+</div>
+
+<!-- GUIDE TAB -->
+<div id="pane-guide" class="pane">
+  <div class="section-card">
+    <div class="section-title">📖 How to Use This App</div>
+    <div style="font-size:12px;color:#555;line-height:1.8">
+      <div style="margin-bottom:10px"><strong style="color:#0F6E56">Step 1</strong> — Search or select your district (82 NE India districts).</div>
+      <div style="margin-bottom:10px"><strong style="color:#0F6E56">Step 2</strong> — Tap + to add each symptom case.</div>
+      <div style="margin-bottom:10px"><strong style="color:#0F6E56">Step 3</strong> — Move sliders to match water readings.</div>
+      <div style="margin-bottom:10px"><strong style="color:#0F6E56">Step 4</strong> — Press Submit Report.</div>
+      <div><strong style="color:#0F6E56">No Internet?</strong> Use SMS Mode tab.</div>
+    </div>
+  </div>
+  <div class="section-card">
+    <div class="section-title">🚨 Risk Level Guide</div>
+    <div class="risk-guide-item" style="background:#fef2f2;border-left:4px solid #ef4444">
+      <div style="font-size:18px">🔴</div>
+      <div><div style="font-size:12px;font-weight:600;color:#dc2626">CRITICAL (75–100)</div><div style="font-size:11px;color:#888">Call PHC immediately. Start ORS distribution.</div></div>
+    </div>
+    <div class="risk-guide-item" style="background:#fff7ed;border-left:4px solid #f97316">
+      <div style="font-size:18px">🟠</div>
+      <div><div style="font-size:12px;font-weight:600;color:#ea580c">HIGH (50–74)</div><div style="font-size:11px;color:#888">Alert health officer. Increase surveillance.</div></div>
+    </div>
+    <div class="risk-guide-item" style="background:#fefce8;border-left:4px solid #eab308">
+      <div style="font-size:18px">🟡</div>
+      <div><div style="font-size:12px;font-weight:600;color:#ca8a04">MEDIUM (25–49)</div><div style="font-size:11px;color:#888">Monitor closely. Check water sources.</div></div>
+    </div>
+    <div class="risk-guide-item" style="background:#f0fdf4;border-left:4px solid #22c55e">
+      <div style="font-size:18px">🟢</div>
+      <div><div style="font-size:12px;font-weight:600;color:#16a34a">LOW (0–24)</div><div style="font-size:11px;color:#888">Normal surveillance. Continue weekly reports.</div></div>
+    </div>
+  </div>
+</div>
+
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const BACKEND = 'http://localhost:3001';
+
+// ── counter state
+const counters = { diarrhea:0, dehydration:0, jaundice:0, deaths:0 };
+
+function change(key, delta) {
+  counters[key] = Math.max(0, counters[key] + delta);
+  document.getElementById('v-' + key).textContent = counters[key];
+}
+
+// ── DISTRICT SEARCH FILTER
+// Stores all original options so filter can restore them
+const allOptions = [];
+window.addEventListener('DOMContentLoaded', () => {
+  const sel = document.getElementById('district');
+  Array.from(sel.options).forEach(opt => {
+    allOptions.push({ value: opt.value, text: opt.text, group: opt.parentElement?.label || '' });
+  });
+});
+
+function filterDistricts(query) {
+  const sel = document.getElementById('district');
+  const q   = query.trim().toLowerCase();
+
+  // Clear and rebuild
+  sel.innerHTML = '';
+
+  if (!q) {
+    // Restore all options grouped
+    rebuildFull();
+    return;
+  }
+
+  // Show flat filtered list
+  const matched = allOptions.filter(o =>
+    o.value && o.text.toLowerCase().includes(q)
+  );
+
+  const placeholder = new Option('-- Select District --', '');
+  sel.appendChild(placeholder);
+
+  if (!matched.length) {
+    sel.appendChild(new Option('No district found', ''));
+    return;
+  }
+
+  matched.forEach(o => {
+    sel.appendChild(new Option(o.text, o.value));
+  });
+}
+
+function rebuildFull() {
+  // Re-render grouped structure from allOptions
+  const sel = document.getElementById('district');
+  sel.innerHTML = '<option value="">-- Select District --</option>';
+  let currentGroup = null;
+  let currentOptgroup = null;
+
+  allOptions.forEach(o => {
+    if (!o.value) return; // skip placeholder already added
+    if (o.group !== currentGroup) {
+      currentGroup    = o.group;
+      currentOptgroup = document.createElement('optgroup');
+      currentOptgroup.label = currentGroup;
+      sel.appendChild(currentOptgroup);
+    }
+    const opt = document.createElement('option');
+    opt.value = o.value;
+    opt.textContent = o.text;
+    currentOptgroup.appendChild(opt);
+  });
+}
+
+// ── slider update with WHO labels
+function updateSlider(key, val) {
+  document.getElementById(key + '-val').textContent = val;
+  const st = document.getElementById(key + '-status');
+  if (!st) return;
+  const v = parseFloat(val);
+  let text='', bg='', col='';
+  if (key==='ph') {
+    if (v<6.5||v>8.5){text='⚠ Unsafe (6.5–8.5)';bg='#fee2e2';col='#dc2626';}
+    else              {text='✓ Safe';             bg='#dcfce7';col='#16a34a';}
+  } else if (key==='turbidity') {
+    if (v>10)     {text='🚨 Dangerous (>10 NTU)';bg='#fee2e2';col='#dc2626';}
+    else if (v>4) {text='⚠ Above WHO (4 NTU)';  bg='#fef9c3';col='#ca8a04';}
+    else          {text='✓ Safe';                 bg='#dcfce7';col='#16a34a';}
+  } else if (key==='fecal') {
+    if (v>200)  {text='🚨 '+Math.round(v/50)+'× WHO limit';bg='#fee2e2';col='#dc2626';}
+    else if (v>0){text='⚠ Above WHO limit (0)';  bg='#fef9c3';col='#ca8a04';}
+    else         {text='✓ Safe';                   bg='#dcfce7';col='#16a34a';}
+  } else if (key==='rainfall') {
+    if (v>300)    {text='🌧 Flood risk';    bg='#fee2e2';col='#dc2626';}
+    else if (v>150){text='⚠ Heavy rainfall';bg='#fef9c3';col='#ca8a04';}
+    else           {text='✓ Normal';         bg='#dcfce7';col='#16a34a';}
+  }
+  st.textContent=text;
+  st.style.cssText=`background:${bg};color:${col}`;
+}
+updateSlider('ph',7.0); updateSlider('turbidity',5);
+updateSlider('fecal',0); updateSlider('rainfall',50);
+
+// ── local session history
+const localHistory = [];
+
+// ── submit report
+async function submitReport() {
+  const districtEl = document.getElementById('district');
+  if (!districtEl.value) { showToast('⚠ Please select a district first'); return; }
+
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Submitting...';
+
+  const district_id   = parseInt(districtEl.value);
+  const week_number   = parseInt(document.getElementById('week').value);
+  const year          = parseInt(document.getElementById('year').value);
+  const ph            = parseFloat(document.getElementById('sl-ph').value);
+  const turbidity_ntu = parseFloat(document.getElementById('sl-turbidity').value);
+  const fecal_coliform= parseFloat(document.getElementById('sl-fecal').value);
+
+  const now        = new Date();
+  const weekOfYear = Math.ceil((((now - new Date(now.getFullYear(),0,1)) / 86400000) + 1) / 7);
+  const month      = now.getMonth() + 1;
+  const monsoon    = (month >= 6 && month <= 9) ? 1 : 0;
+
+  const payload = {
+    district_id,
+    cases:               counters.diarrhea + counters.dehydration + counters.jaundice,
+    diarrhea_cnt:        counters.diarrhea,
+    dehydration_cnt:     counters.dehydration,
+    jaundice_cnt:        counters.jaundice,
+    week_number,
+    year,
+    ph,
+    turbidity_ntu,
+    fecal_coliform,
+    bod_mg_l:            2.5,
+    rainfall_mm:         parseFloat(document.getElementById('sl-rainfall').value) || 0,
+    monsoon_flag:        monsoon,
+    flood_risk_score:    monsoon === 1 ? 0.7 : 0.1,
+    temperature_c:       month >= 6 && month <= 9 ? 28 : 22,
+    humidity_pct:        month >= 6 && month <= 9 ? 88 : 65,
+    population_density:  420,
+    open_defecation_pct: 32,
+    handwashing_pct:     48,
+    sanitation_pct:      68,
+    week_of_year:        weekOfYear,
+    month:               month,
+    quarter:             Math.ceil(month / 3),
+  };
+
+  const token = localStorage.getItem('health_token');
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = 'Bearer ' + token;
+
+  // Get readable district name for history
+  const districtName = districtEl.options[districtEl.selectedIndex]?.text?.split('—')[0]?.trim() || 'District';
+
+  try {
+    const res  = await fetch(BACKEND + '/api/reports', { method:'POST', headers, body: JSON.stringify(payload) });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Submission failed');
+    if (data.prediction) showResult(data.prediction, district_id);
+    showToast('✅ Report saved to database!');
+
+    localHistory.unshift({
+      district: districtName,
+      week: week_number, year,
+      diarrhea: counters.diarrhea, dehydration: counters.dehydration, jaundice: counters.jaundice,
+      risk: data.prediction?.risk_score||0,
+      risk_level: data.prediction?.risk_level||'Low',
+      time: new Date().toLocaleTimeString()
+    });
+
+  } catch(e) {
+    const score = Math.min(99, Math.round(
+      counters.diarrhea*2.5 + counters.dehydration*1.5 + counters.jaundice*3 +
+      (turbidity_ntu>4?15:0) + (ph<6.5?20:0) + (fecal_coliform>50?18:0)
+    ));
+    const level = score>=75?'Critical':score>=50?'High':score>=25?'Medium':'Low';
+    showResult({ risk_score:score, risk_level:level, predicted_disease: score>30?'ADD':'No Outbreak' }, district_id);
+    showToast('⚠ Offline mode — risk estimated locally');
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '📤 Submit Report';
+}
+
+// ── show prediction result card
+function showResult(pred, district_id) {
+  const colors = { Critical:'#dc2626', High:'#ea580c', Medium:'#ca8a04', Low:'#16a34a' };
+  const color  = colors[pred.risk_level] || '#888';
+  const card   = document.getElementById('resultCard');
+
+  card.style.borderColor = color;
+  card.classList.add('show');
+  document.getElementById('riskScore').textContent = pred.risk_score;
+  document.getElementById('riskScore').style.color = color;
+  document.getElementById('riskDisease').textContent = pred.predicted_disease || '';
+
+  const badge = document.getElementById('riskBadge');
+  badge.textContent = (pred.risk_level||'').toUpperCase();
+  badge.style.cssText = `background:${color}20;color:${color}`;
+  document.getElementById('riskFill').style.cssText = `width:${pred.risk_score}%;background:${color}`;
+
+  const actions = pred.risk_score>=75
+    ? ['Call PHC Medical Officer immediately','Start ORS distribution in affected area','Emergency water chlorination treatment']
+    : pred.risk_score>=50
+    ? ['Increase surveillance frequency','Inspect local water sources','Alert PHC doctor']
+    : ['Continue routine weekly monitoring','Check handwashing facilities'];
+
+  document.getElementById('actionList').innerHTML = actions.map(a=>
+    `<div class="action-item"><span style="color:#0F6E56;font-weight:700">→</span> ${a}</div>`
+  ).join('');
+
+  document.getElementById('smsPreview').innerHTML =
+    `<div style="font-size:10px;font-weight:600;color:#888;margin-bottom:4px">AUTO SMS ALERT TEXT:</div>
+     <div class="sms-box"><pre>HEALTH ALERT - Risk ${pred.risk_score}/100 (${pred.risk_level}). Disease: ${pred.predicted_disease}. District ID: ${district_id}. Take immediate action.</pre></div>`;
+
+  card.scrollIntoView({ behavior:'smooth', block:'nearest' });
+}
+
+// ── SMS parser
+function parseSMS() {
+  const txt   = document.getElementById('smsInput').value.trim().toUpperCase();
+  const parts = txt.split(/\s+/);
+  const res   = document.getElementById('smsResult');
+
+  if (parts[0]!=='REPORT'||parts.length<6) {
+    res.innerHTML='<div style="color:#dc2626">❌ Invalid format. Use: REPORT [CODE] [DIARRHEA] [DEHYDRATION] [JAUNDICE] [WEEK]</div>';
+    return;
+  }
+  const distMap = {EJH:36,WJH:37,KAM:1,CAC:12,IME:44,KOH:53,AIZ:61,AGT:69};
+  const dist_id = distMap[parts[1]];
+  if (!dist_id) { res.innerHTML=`<div style="color:#dc2626">❌ Unknown district code: ${parts[1]}</div>`; return; }
+
+  counters.diarrhea   = parseInt(parts[2])||0;
+  counters.dehydration= parseInt(parts[3])||0;
+  counters.jaundice   = parseInt(parts[4])||0;
+  ['diarrhea','dehydration','jaundice'].forEach(k=>
+    document.getElementById('v-'+k).textContent=counters[k]);
+  document.getElementById('week').value     = parseInt(parts[5])||25;
+  document.getElementById('district').value = dist_id;
+
+  res.innerHTML=`<div style="color:#16a34a;font-weight:600;margin-bottom:6px">✅ SMS Parsed — Submitting...</div>`;
+  setTimeout(()=>{ switchNav('report',document.querySelector('.nav-btn')); submitReport(); }, 800);
+}
+
+// ── history rendering
+async function renderHistory() {
+  const list  = document.getElementById('historyList');
+  const token = localStorage.getItem('health_token');
+
+  if (token) {
+    list.innerHTML='<div style="text-align:center;padding:20px;color:#888;font-size:12px">Loading from database...</div>';
+    try {
+      const res  = await fetch(BACKEND+'/api/my-reports', { headers:{'Authorization':'Bearer '+token} });
+      const data = await res.json();
+      if (!res.ok) throw new Error();
+      if (!data.length) {
+        list.innerHTML='<div style="text-align:center;padding:30px;color:#888;font-size:13px">No reports yet.</div>';
+        return;
+      }
+      const cols={Critical:'#dc2626',High:'#ea580c',Medium:'#ca8a04',Low:'#16a34a'};
+      list.innerHTML=data.map(r=>{
+        const col=cols[r.risk_level]||'#888';
+        const time=new Date(r.submitted_at).toLocaleString();
+        return `<div class="history-item">
+          <div>
+            <div style="font-size:12px;font-weight:600;color:#1a1a1a">${r.district} — Week ${r.week_number}</div>
+            <div style="font-size:11px;color:#888;margin-top:2px">Diarrhea: ${r.diarrhea_cnt} · Dehydration: ${r.dehydration_cnt} · Jaundice: ${r.jaundice_cnt}</div>
+            <div style="font-size:10px;color:#aaa;margin-top:2px">${time}</div>
+          </div>
+          <div style="text-align:right;flex-shrink:0;margin-left:10px">
+            <span class="badge" style="background:${col}20;color:${col}">${r.risk_level||'Low'}</span>
+            <div style="font-size:11px;color:#888;margin-top:4px">${r.predicted_disease||'—'}</div>
+          </div>
+        </div>`;
+      }).join('');
+      return;
+    } catch(e) { /* fall through */ }
+  }
+
+  if (!localHistory.length) {
+    list.innerHTML=`<div style="text-align:center;padding:30px;color:#888;font-size:13px">No reports yet.<br>${!token?'<a href="/login.html" style="color:#0F6E56;font-weight:600">Login</a> to see database history.':''}</div>`;
+    return;
+  }
+  const cols={Critical:'#dc2626',High:'#ea580c',Medium:'#ca8a04',Low:'#16a34a'};
+  list.innerHTML=localHistory.map(h=>{
+    const col=cols[h.risk_level]||'#888';
+    return `<div class="history-item">
+      <div>
+        <div style="font-size:12px;font-weight:600;color:#1a1a1a">${h.district} — Week ${h.week}</div>
+        <div style="font-size:11px;color:#888;margin-top:2px">Diarrhea: ${h.diarrhea} · Dehydration: ${h.dehydration} · Jaundice: ${h.jaundice}</div>
+        <div style="font-size:10px;color:#aaa;margin-top:2px">${h.time} (this session)</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0;margin-left:10px">
+        <span class="badge" style="background:${col}20;color:${col}">${h.risk_level}</span>
+        <div style="font-size:11px;color:#888;margin-top:4px">Score: ${h.risk}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── API health check
+async function checkAPI() {
+  const el = document.getElementById('apiStatus');
+  try {
+    const r    = await fetch(BACKEND+'/api/health', { signal: AbortSignal.timeout(3000) });
+    const data = await r.json();
+    el.innerHTML=`<span style="color:#16a34a;font-weight:600">✅ Backend online</span>
+      <span style="color:#888;margin-left:8px">localhost:3001</span>
+      <div style="font-size:11px;color:#aaa;margin-top:3px">${data.message||''}</div>`;
+  } catch {
+    el.innerHTML=`<span style="color:#dc2626;font-weight:600">❌ Backend offline</span>
+      <div style="font-size:11px;color:#888;margin-top:4px">Run: node server.js in your terminal</div>`;
+  }
+}
+
+// ── nav switching
+function switchNav(id, btn) {
+  document.querySelectorAll('.pane').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('pane-'+id).classList.add('active');
+  if (btn) btn.classList.add('active');
+  if (id==='history') { renderHistory(); checkAPI(); }
+}
+
+// ── language labels
+const LABELS = {
+  en:{location:'Location & Week',district:'District',week:'Week Number',year:'Year',symptoms:'Symptom Counts This Week',diarrhea:'Diarrhea cases',dehydration:'Dehydration cases',jaundice:'Jaundice cases',deaths:'Deaths this week',water:'Water Quality',ph:'Water pH',turbidity:'Turbidity (NTU)',fecal:'Fecal Coliform (MPN/100ml)',rainfall:'Rainfall this week (mm)'},
+  as:{location:'স্থান আৰু সপ্তাহ',district:'জিলা',week:'সপ্তাহৰ নম্বৰ',year:'বছৰ',symptoms:'এই সপ্তাহত লক্ষণ',diarrhea:'ডায়েৰিয়া',dehydration:'পানীশূন্যতা',jaundice:'জণ্ডিছ',deaths:'মৃত্যু',water:'পানীৰ মান',ph:'পানীৰ pH',turbidity:'ঘোলাতা',fecal:'মলীয় কলিফৰ্ম',rainfall:'বৰষুণ (mm)'},
+  bn:{location:'স্থান এবং সপ্তাহ',district:'জেলা',week:'সপ্তাহ নম্বর',year:'বছর',symptoms:'এই সপ্তাহে উপসর্গ',diarrhea:'ডায়রিয়া',dehydration:'পানিশূন্যতা',jaundice:'জন্ডিস',deaths:'মৃত্যু',water:'পানির মান',ph:'পানির pH',turbidity:'ঘোলাটেতা',fecal:'ফেকাল কোলিফর্ম',rainfall:'বৃষ্টি (mm)'},
+  mni:{location:'লোইশাং অমসুং উইক',district:'জিলা',week:'উইক',year:'চহী',symptoms:'মরুওইবা',diarrhea:'ডায়রিয়া',dehydration:'পানি থোকপা',jaundice:'জন্ডিস',deaths:'থুগৎপা',water:'ইশিং মায়োক্লোন',ph:'pH',turbidity:'অকোয়বা',fecal:'FC',rainfall:'নাকল (mm)'},
+  kha:{location:'Shnong bad Wiik',district:'Sawdong',week:'Wiik',year:'Snem',symptoms:'Ki roiñ',diarrhea:'Pynheh rynjang',dehydration:'Jingim',jaundice:'Jaundice',deaths:'Ki dei bam',water:'Jingpang doh',ph:'pH',turbidity:'Jingkhlain',fecal:'FC',rainfall:'Usngi (mm)'},
+  hi:{location:'स्थान और सप्ताह',district:'जिला',week:'सप्ताह संख्या',year:'वर्ष',symptoms:'इस सप्ताह लक्षण',diarrhea:'दस्त के मामले',dehydration:'निर्जलीकरण',jaundice:'पीलिया',deaths:'मौतें',water:'जल गुणवत्ता',ph:'जल pH',turbidity:'गंदलापन',fecal:'फेकल कोलीफॉर्म',rainfall:'वर्षा (mm)'},
+};
+
+function setLang(lang, btn) {
+  document.querySelectorAll('.lang-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const L=LABELS[lang]||LABELS.en;
+  Object.entries(L).forEach(([k,v])=>{ const el=document.getElementById('lbl-'+k); if(el)el.textContent=v; });
+}
+
+// ── toast
+function showToast(msg) {
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),3000);
+}
+
+// ── on load — check login
+(function(){
+  const token=localStorage.getItem('health_token');
+  const user=localStorage.getItem('health_user');
+  const el=document.getElementById('loginStatus');
+  const warn=document.getElementById('loginWarn');
+  if (token&&user) {
+    try { const u=JSON.parse(user); el.textContent=u.name||'Logged in'; } catch { el.textContent='Logged in'; }
+    warn.style.display='none';
+  } else {
+    el.textContent='Not logged in';
+    warn.style.display='flex';
+  }
+})();
+</script>
+</body>
+</html>

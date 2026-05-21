@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ASHA Login — Smart Health Monitor</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: linear-gradient(135deg, #0F6E56 0%, #185FA5 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+  .card { background: white; border-radius: 20px; padding: 32px 28px; width: 100%; max-width: 400px; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
+  .logo { text-align: center; margin-bottom: 24px; }
+  .logo-icon { width: 64px; height: 64px; background: linear-gradient(135deg, #0F6E56, #185FA5); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 28px; margin: 0 auto 12px; }
+  .logo h1 { font-size: 18px; font-weight: 700; color: #1a1a1a; }
+  .logo p { font-size: 12px; color: #888; margin-top: 3px; }
+  .tabs { display: flex; background: #f3f4f6; border-radius: 10px; padding: 4px; margin-bottom: 24px; }
+  .tab { flex: 1; padding: 8px; border: none; background: none; border-radius: 7px; font-size: 13px; font-weight: 500; cursor: pointer; color: #888; transition: all 0.2s; }
+  .tab.active { background: white; color: #0F6E56; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+  .pane { display: none; } .pane.active { display: block; }
+  label { font-size: 12px; color: #555; display: block; margin-bottom: 5px; margin-top: 14px; font-weight: 500; }
+  input, select { width: 100%; padding: 11px 14px; border: 1.5px solid #e5e7eb; border-radius: 10px; font-size: 13px; color: #1a1a1a; transition: border 0.2s; }
+  input:focus, select:focus { outline: none; border-color: #0F6E56; }
+  .btn { width: 100%; padding: 13px; background: linear-gradient(135deg, #0F6E56, #185FA5); color: white; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; margin-top: 20px; transition: opacity 0.2s; }
+  .btn:hover { opacity: 0.92; }
+  .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+  .error { background: #fee2e2; border: 1px solid #fca5a5; border-radius: 8px; padding: 10px 12px; font-size: 12px; color: #dc2626; margin-top: 12px; display: none; }
+  .error.show { display: block; }
+  .success { background: #dcfce7; border: 1px solid #86efac; border-radius: 8px; padding: 10px 12px; font-size: 12px; color: #16a34a; margin-top: 12px; display: none; }
+  .success.show { display: block; }
+  .demo-box { background: #f0fdf4; border: 1px solid #86efac; border-radius: 10px; padding: 12px 14px; margin-top: 16px; }
+  .demo-title { font-size: 11px; font-weight: 600; color: #16a34a; margin-bottom: 6px; }
+  .demo-btn { width: 100%; padding: 8px; background: #0F6E56; color: white; border: none; border-radius: 7px; font-size: 12px; cursor: pointer; margin-top: 6px; }
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 6px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .user-card { background: #f8fafc; border-radius: 10px; padding: 12px 14px; margin-top: 14px; display: none; }
+  .user-card.show { display: block; }
+  .user-name { font-size: 15px; font-weight: 600; color: #1a1a1a; }
+  .user-role { font-size: 11px; color: #888; margin-top: 2px; }
+  .user-district { font-size: 12px; color: #0F6E56; margin-top: 4px; font-weight: 500; }
+  .goto-btn { display: block; text-align: center; margin-top: 12px; padding: 10px; background: #0F6E56; color: white; border-radius: 8px; text-decoration: none; font-size: 13px; font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">
+    <div class="logo-icon">🏥</div>
+    <h1>Smart Health Monitor</h1>
+    <p>ASHA Worker & Health Officer Portal</p>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('login',this)">Login</button>
+    <button class="tab" onclick="switchTab('register',this)">Register</button>
+  </div>
+
+  <!-- LOGIN PANE -->
+  <div id="pane-login" class="pane active">
+    <label>Phone Number</label>
+    <input type="tel" id="login-phone" placeholder="9876543210">
+
+    <label>Password</label>
+    <input type="password" id="login-pass" placeholder="Enter your password">
+
+    <button class="btn" onclick="doLogin()" id="login-btn">Login</button>
+    <div class="error" id="login-error"></div>
+
+    <div class="user-card" id="login-success-card">
+      <div class="user-name" id="uc-name"></div>
+      <div class="user-role" id="uc-role"></div>
+      <div class="user-district" id="uc-district"></div>
+      <a href="/asha_report.html" class="goto-btn">→ Open ASHA Reporter</a>
+      <a href="/" class="goto-btn" style="margin-top:6px;background:#185FA5">→ Open Dashboard</a>
+    </div>
+
+    <!-- Demo credentials -->
+    <div class="demo-box">
+      <div class="demo-title">📋 Demo — Register a test account first, then login</div>
+      <div style="font-size:11px;color:#555">Switch to Register tab → create account → come back here to login</div>
+      <button class="demo-btn" onclick="fillDemo()">Auto-fill demo credentials</button>
+    </div>
+  </div>
+
+  <!-- REGISTER PANE -->
+  <div id="pane-register" class="pane">
+    <label>Full Name</label>
+    <input type="text" id="reg-name" placeholder="e.g. Purnima Das">
+
+    <label>Phone Number</label>
+    <input type="tel" id="reg-phone" placeholder="9876543210">
+
+    <label>Password</label>
+    <input type="password" id="reg-pass" placeholder="Create a password">
+
+    <label>Role</label>
+    <select id="reg-role">
+      <option value="ASHA">ASHA Worker</option>
+      <option value="PHC_OFFICER">PHC Medical Officer</option>
+      <option value="STATE_ADMIN">State Admin</option>
+    </select>
+
+    <label>District</label>
+    <select id="reg-district">
+      <option value="1">East Jaintia Hills — Meghalaya</option>
+      <option value="2">West Jaintia Hills — Meghalaya</option>
+      <option value="3">Kamrup — Assam</option>
+      <option value="4">Cachar — Assam</option>
+      <option value="5">Imphal East — Manipur</option>
+      <option value="6">Udalguri — Assam</option>
+    </select>
+
+    <button class="btn" onclick="doRegister()" id="reg-btn">Create Account</button>
+    <div class="error" id="reg-error"></div>
+    <div class="success" id="reg-success"></div>
+  </div>
+</div>
+
+<script>
+const BACKEND = 'http://localhost:3001';
+
+function switchTab(id, btn) {
+  document.querySelectorAll('.pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('pane-' + id).classList.add('active');
+  btn.classList.add('active');
+}
+
+function fillDemo() {
+  document.getElementById('login-phone').value = '9876543210';
+  document.getElementById('login-pass').value = 'asha123';
+}
+
+async function doLogin() {
+  const btn = document.getElementById('login-btn');
+  const err = document.getElementById('login-error');
+  const phone = document.getElementById('login-phone').value.trim();
+  const password = document.getElementById('login-pass').value;
+  err.classList.remove('show');
+
+  if (!phone || !password) { err.textContent = 'Please enter phone and password'; err.classList.add('show'); return; }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Logging in...';
+
+  try {
+    const res = await fetch(BACKEND + '/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone, password })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Login failed');
+
+    localStorage.setItem('health_token', data.token);
+    localStorage.setItem('health_user', JSON.stringify(data.user));
+
+    document.getElementById('uc-name').textContent = '👋 Welcome, ' + data.user.name;
+    document.getElementById('uc-role').textContent = 'Role: ' + data.user.role;
+    document.getElementById('uc-district').textContent = '📍 ' + (data.user.district || 'All Districts');
+    document.getElementById('login-success-card').classList.add('show');
+    btn.innerHTML = '✅ Logged in!';
+  } catch (e) {
+    err.textContent = e.message;
+    err.classList.add('show');
+    btn.disabled = false;
+    btn.innerHTML = 'Login';
+  }
+}
+
+async function doRegister() {
+  const btn = document.getElementById('reg-btn');
+  const err = document.getElementById('reg-error');
+  const suc = document.getElementById('reg-success');
+  err.classList.remove('show'); suc.classList.remove('show');
+
+  const name     = document.getElementById('reg-name').value.trim();
+  const phone    = document.getElementById('reg-phone').value.trim();
+  const password = document.getElementById('reg-pass').value;
+  const role     = document.getElementById('reg-role').value;
+  const district_id = document.getElementById('reg-district').value;
+
+  if (!name || !phone || !password) { err.textContent = 'All fields are required'; err.classList.add('show'); return; }
+  if (phone.length < 10) { err.textContent = 'Enter valid 10-digit phone number'; err.classList.add('show'); return; }
+  if (password.length < 4) { err.textContent = 'Password must be at least 4 characters'; err.classList.add('show'); return; }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Creating account...';
+
+  try {
+    const res = await fetch(BACKEND + '/api/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, phone, password, role, district_id: parseInt(district_id) })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Registration failed');
+
+    suc.textContent = '✅ Account created for ' + name + '! Switch to Login tab and log in.';
+    suc.classList.add('show');
+    btn.innerHTML = 'Create Account';
+    btn.disabled = false;
+
+    // Auto-fill login
+    document.getElementById('login-phone').value = phone;
+    document.getElementById('login-pass').value = password;
+  } catch (e) {
+    err.textContent = e.message.includes('unique') ? 'This phone number is already registered' : e.message;
+    err.classList.add('show');
+    btn.disabled = false;
+    btn.innerHTML = 'Create Account';
+  }
+}
+</script>
+</body>
+</html>
